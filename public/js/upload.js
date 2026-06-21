@@ -1,3 +1,5 @@
+import { upload } from 'https://esm.sh/@vercel/blob@0.27.3/client';
+
 (function () {
   "use strict";
 
@@ -47,7 +49,7 @@
     el.toast.textContent = msg;
     el.toast.classList.add("show");
     clearTimeout(toastTimer);
-    toastTimer = setTimeout(function () { el.toast.classList.remove("show"); }, 3000);
+    toastTimer = setTimeout(function () { el.toast.classList.remove("show"); }, 3200);
   }
 
   function show(view) {
@@ -129,32 +131,31 @@
     });
   }
 
-  // ── Subir un disparo ───────────────────────────────────
+  // ── Subir un disparo DIRECTO a Vercel Blob ─────────────
   function reqJSON(url, body) {
     return fetch(url, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
   }
   function setStatusHint() {
     el.btnFinish.textContent = pending > 0 ? "Subiendo… (no cierres)" : "Listo por ahora";
   }
-  async function uploadShot(blob, kind, filename) {
+  async function uploadShot(file, kind, filename) {
     pending++; setStatusHint();
     try {
       for (var attempt = 0; attempt < 3; attempt++) {
         try {
-          var ct = blob.type || (kind === "video" ? "video/mp4" : "image/jpeg");
-          var pres = await reqJSON("/api/roll/presign", {
-            uploadId: uploadId, deviceId: DEVICE, momento: MOMENTO,
-            kind: kind, filename: filename, contentType: ct, size: blob.size,
+          var ct = file.type || (kind === "video" ? "video/mp4" : "image/jpeg");
+          var pathname = MOMENTO + "/" + DEVICE + "/" + kind + "-" + filename;
+          var blob = await upload(pathname, file, {
+            access: "public",
+            handleUploadUrl: "/api/blob/upload",
+            contentType: ct,
+            clientPayload: JSON.stringify({ momento: MOMENTO, deviceId: DEVICE, kind: kind }),
           });
-          if (pres.status === 409) { toast(kind === "video" ? "Ya usaste tus 2 videos" : "Se acabó tu rollo"); return false; }
-          if (!pres.ok) throw new Error("presign");
-          var data = await pres.json();
-          var put = await fetch(data.url, { method: "PUT", headers: { "Content-Type": ct }, body: blob });
-          if (!put.ok) throw new Error("put " + put.status);
           var conf = await reqJSON("/api/roll/confirm", {
-            uploadId: uploadId, deviceId: DEVICE, momento: MOMENTO,
-            key: data.key, kind: kind, filename: filename, size: blob.size, contentType: ct,
+            momento: MOMENTO, deviceId: DEVICE, kind: kind, url: blob.url,
+            filename: filename, size: file.size, contentType: ct,
           });
+          if (conf.status === 409) { toast(kind === "video" ? "Ya usaste tus 2 videos" : "Se acabó tu rollo"); return false; }
           if (!conf.ok) throw new Error("confirm");
           return true;
         } catch (e) {
@@ -174,7 +175,7 @@
   el.inputPhoto.addEventListener("change", function (e) {
     var file = (e.target.files || [])[0];
     e.target.value = "";
-    if (!file) return; // canceló: no gasta el cupo
+    if (!file) return;
     if (photosLeft <= 0) { toast("Se acabó tu rollo de fotos"); return; }
     photosLeft--;
     updateCounters();
@@ -206,8 +207,8 @@
       if (dur > LIMITS.maxVideoSeconds) { toast("Ese video dura " + Math.round(dur) + "s. El máximo es 30 segundos."); return; }
       if (videosUsed >= LIMITS.maxVideos) return;
       videosUsed++; updateCounters();
-      toast("Video guardado 💛");
-      uploadShot(file, "video", file.name || ("video-" + videosUsed + ".mp4"));
+      toast("Subiendo tu video…");
+      uploadShot(file, "video", "video-" + videosUsed + ".mp4");
     });
   });
 
@@ -224,8 +225,8 @@
       (videosUsed ? " y " + videosUsed + " video" + (videosUsed === 1 ? "" : "s") : "") +
       "). ¡Gracias de corazón! 💛";
     show(el.done);
-    for (var i = 0; i < 30 && pending > 0; i++) await wait(300);
-    reqJSON("/api/roll/finish", { uploadId: uploadId, deviceId: DEVICE, momento: MOMENTO }).catch(function () {});
+    for (var i = 0; i < 40 && pending > 0; i++) await wait(300);
+    reqJSON("/api/roll/finish", { momento: MOMENTO, deviceId: DEVICE }).catch(function () {});
   }
   function exitRoll() {
     var pl = photosLeft, vl = LIMITS.maxVideos - videosUsed;
@@ -248,7 +249,6 @@
       var r = await reqJSON("/api/roll/start", {
         momento: MOMENTO, deviceId: DEVICE, name: name, message: el.mensaje.value.trim(),
       });
-      if (r.status === 409) { await routeFromStatus(); return; }
       if (!r.ok) throw new Error("start");
       var data = await r.json();
       uploadId = data.uploadId;
