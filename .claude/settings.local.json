@@ -1,0 +1,9 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(git -C \"C:/Users/G16/Documents/QR BODA\" log --oneline -5)",
+      "Bash(cd \"C:/Users/G16/Documents/genius-growth-partners\" && echo \"=== ROOT FILES ===\" && ls -1 && echo \"\" && echo \"=== package.json \\(name/deps\\) ===\" && cat package.json 2>/dev/null | head -60 && echo \"\" && echo \"=== vercel/next config present? ===\" && ls -1 | grep -iE \"vercel|next|vite|astro\" 2>/dev/null)",
+      "mcp__visualize__read_me"
+    ]
+  }
+}

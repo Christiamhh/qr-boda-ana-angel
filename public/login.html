@@ -1,0 +1,32 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Galería · Ana &amp; Ángel</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,500;1,400&family=Jost:wght@300;400&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="/static/css/styles.css" />
+</head>
+<body>
+  <div class="page">
+    <div class="card">
+      <div class="eyebrow">Galería privada</div>
+      <div class="monogram">A&nbsp;·&nbsp;A</div>
+      <div class="names">Ana &amp; Ángel</div>
+      <p class="subtitle">Acceso solo para los novios</p>
+      <div class="divider"><span>&#10086;</span></div>
+      <form method="POST" action="/galeria/login">
+        <div class="field">
+          <label for="password">Contraseña</label>
+          <input id="password" name="password" type="password" autocomplete="current-password" autofocus />
+        </div>
+        <div style="color:var(--rose-deep);font-size:13px;min-height:18px;margin-top:8px">{{ERROR}}</div>
+        <button class="btn btn-primary" type="submit">Entrar</button>
+      </form>
+    </div>
+    <div class="footer-credit">Ana &amp; Ángel · 2026</div>
+  </div>
+</body>
+</html>

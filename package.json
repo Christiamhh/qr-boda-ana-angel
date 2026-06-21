@@ -1,0 +1,20 @@
+{
+  "name": "qr-boda-ana-angel",
+  "version": "1.0.0",
+  "description": "Subida de recuerdos por QR para la boda de Ana Donaire & Angel Aguilar",
+  "type": "module",
+  "engines": {
+    "node": "20.x"
+  },
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node server.js"
+  },
+  "dependencies": {
+    "@aws-sdk/client-s3": "^3.658.0",
+    "@aws-sdk/s3-request-presigner": "^3.658.0",
+    "@supabase/supabase-js": "^2.45.4",
+    "dotenv": "^16.4.7",
+    "express": "^4.21.0"
+  }
+}

@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Códigos QR · Ana &amp; Ángel</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@500&family=Jost:wght@300;400&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="/static/css/styles.css" />
+  <style>
+    body { display: block; padding: 30px 16px 60px; }
+    .qr-wrap { max-width: 760px; margin: 0 auto; }
+    .qr-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 18px; margin-top: 22px; }
+    .qr-card { background: var(--paper); border: 1px solid var(--line-soft); border-radius: 18px; box-shadow: var(--shadow); padding: 24px; text-align: center; }
+    .qr-card h3 { font-family: var(--serif); font-weight: 500; font-size: 26px; margin: 0 0 4px; }
+    .qr-card .url { font-size: 12px; color: var(--muted); word-break: break-all; margin-bottom: 14px; }
+    .qr-box { display: inline-block; padding: 14px; background: #fff; border-radius: 12px; border: 1px solid var(--line); }
+    .qr-box canvas, .qr-box img { display: block; width: 220px !important; height: 220px !important; }
+    .qr-card .btn { margin-top: 16px; }
+    .hint { text-align: center; color: var(--muted); font-size: 13px; line-height: 1.6; margin-top: 22px; }
+    .back { text-align:center; margin-top: 18px; }
+    .back a { color: var(--muted); font-size: 13px; text-decoration: none; }
+  </style>
+</head>
+<body>
+  <div class="qr-wrap">
+    <div style="text-align:center">
+      <div class="eyebrow">Para imprimir o usar en Canva</div>
+      <div class="names" style="font-family:var(--serif);font-weight:500;font-size:40px;margin-top:14px">Ana &amp; Ángel</div>
+      <p class="subtitle">Un QR para cada entrada. Descárgalos y colócalos en tus carteles.</p>
+    </div>
+
+    <div class="qr-grid">
+      <div class="qr-card">
+        <h3>Ceremonia</h3>
+        <div class="url">{{BASE}}/ceremonia</div>
+        <div class="qr-box" id="qr-ceremonia"></div>
+        <button class="btn btn-primary" data-dl="qr-ceremonia" data-name="QR-Ceremonia">Descargar PNG</button>
+      </div>
+      <div class="qr-card">
+        <h3>Recepción</h3>
+        <div class="url">{{BASE}}/recepcion</div>
+        <div class="qr-box" id="qr-recepcion"></div>
+        <button class="btn btn-primary" data-dl="qr-recepcion" data-name="QR-Recepcion">Descargar PNG</button>
+      </div>
+    </div>
+
+    <p class="hint">Cada código es de alta resolución (1024&nbsp;px) para que se vea nítido impreso.<br>Impórtalos a tu diseño de Canva sobre los carteles de entrada.</p>
+    <div class="back"><a href="/galeria">← Volver a la galería</a></div>
+  </div>
+
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+  <script>
+    var BASE = "{{BASE}}";
+    function makeQR(id, url) {
+      var box = document.getElementById(id);
+      new QRCode(box, { text: url, width: 1024, height: 1024, colorDark: "#322d28", colorLight: "#ffffff", correctLevel: QRCode.CorrectLevel.H });
+    }
+    makeQR("qr-ceremonia", BASE + "/ceremonia");
+    makeQR("qr-recepcion", BASE + "/recepcion");
+
+    document.querySelectorAll("[data-dl]").forEach(function (btn) {
+      btn.addEventListener("click", function () {
+        var box = document.getElementById(btn.getAttribute("data-dl"));
+        var canvas = box.querySelector("canvas");
+        var dataUrl = canvas ? canvas.toDataURL("image/png") : (box.querySelector("img") || {}).src;
+        if (!dataUrl) return;
+        var a = document.createElement("a");
+        a.href = dataUrl; a.download = btn.getAttribute("data-name") + ".png";
+        document.body.appendChild(a); a.click(); a.remove();
+      });
+    });
+  </script>
+</body>
+</html>
