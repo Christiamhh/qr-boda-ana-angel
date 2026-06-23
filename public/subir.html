@@ -32,7 +32,7 @@
           <span class="ico">
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M3 9a2 2 0 0 1 2-2h1.5l1-2h5l1 2H19a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><circle cx="12" cy="13" r="3.2"/></svg>
           </span>
-          <p>Tenés <b>15 fotos y 2 videos</b>, como un rollo de cámara. Cada disparo <b>se gasta y no se repite</b> — hacé que cada foto cuente. 📷</p>
+          <p>Tenés <b>15 fotos y 2 videos</b>, como un rollo. Cada disparo <b>se gasta y no se repite</b> — hacé que cada foto cuente. 📷</p>
         </div>
 
         <div class="note" style="margin-top:12px">
@@ -51,39 +51,21 @@
           <textarea id="mensaje" maxlength="500" placeholder="Escribe unas líneas con cariño…"></textarea>
         </div>
 
-        <button class="btn btn-primary" id="btn-start" disabled>Comenzar mi rollo</button>
+        <button class="btn btn-primary" id="btn-start" disabled>Abrir mi cámara</button>
         <div class="lock-note">
           <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="5" y="11" width="14" height="9" rx="2"/><path d="M8 11V8a4 4 0 0 1 8 0v3"/></svg>
           Una sola cámara por dispositivo
         </div>
       </div>
 
-      <!-- ── Rollo en uso ── -->
-      <div id="rollo-view" class="hidden" style="text-align:center">
-        <div class="eyebrow">{{MOMENTO_LABEL}}</div>
-        <div class="roll-counter">
-          <span class="big" id="cam-num">15</span>
-          <span class="lbl">fotos en tu rollo</span>
+      <!-- ── Cámara denegada ── -->
+      <div id="denied-view" class="hidden state">
+        <div class="big-ico">
+          <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M3 9a2 2 0 0 1 2-2h1.5l1-2h5l1 2H19a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><circle cx="12" cy="13" r="3.2"/><path d="M3 3l18 18"/></svg>
         </div>
-        <div class="roll-sub" id="video-line">2 videos disponibles</div>
-
-        <button class="btn btn-primary" id="btn-photo">
-          <span style="display:inline-flex;align-items:center;gap:8px;justify-content:center">
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M3 9a2 2 0 0 1 2-2h1.5l1-2h5l1 2H19a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><circle cx="12" cy="13" r="3.2"/></svg>
-            Tomar foto
-          </span>
-        </button>
-
-        <div class="facing-toggle">
-          <button id="btn-facing">Cámara: trasera</button>
-        </div>
-
-        <button class="btn btn-ghost" id="btn-video" style="margin-top:12px">
-          Grabar video (<span id="video-count">0/2</span>)
-        </button>
-
-        <p class="roll-hint">Cada foto se gasta y no se repite. Tu teléfono usa su <b>propio flash</b> y modo noche al tomarla. 🌙</p>
-        <button class="btn-text" id="btn-finish">Listo por ahora</button>
+        <h2>Necesitamos tu cámara</h2>
+        <p>Activá el permiso de cámara en tu navegador (ideal: <b>Chrome</b>) y volvé a intentar.</p>
+        <button class="btn btn-primary" id="btn-retry" style="max-width:260px;margin:18px auto 0">Reintentar</button>
       </div>
 
       <!-- ── Rollo en pausa (reanudar) ── -->
@@ -93,7 +75,7 @@
         </div>
         <h2>Tu rollo te espera</h2>
         <p id="resume-text">Todavía te quedan recuerdos por capturar.</p>
-        <button class="btn btn-primary" id="btn-resume" style="max-width:280px;margin:18px auto 0">Volver al rollo</button>
+        <button class="btn btn-primary" id="btn-resume" style="max-width:280px;margin:18px auto 0">Volver a la cámara</button>
       </div>
 
       <!-- ── Éxito ── -->
@@ -109,14 +91,49 @@
     <div class="footer-credit">Ana &amp; Ángel · 2026</div>
   </div>
 
-  <!-- Cámara nativa (con flash real del teléfono) -->
-  <input id="input-photo" type="file" accept="image/*" capture="environment" class="hidden" />
+  <!-- ── Cámara en vivo (dentro de la app, SIN repetir) ── -->
+  <div class="camera" id="camera">
+    <div class="cam-top">
+      <div class="cam-counter">
+        <span class="num" id="cam-num">15</span>
+        <span class="lbl">fotos en tu rollo</span>
+      </div>
+      <div class="cam-actions">
+        <button class="cam-icon active" id="btn-torch" aria-label="Flash">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M13 2L4 14h6l-1 8 9-12h-6l1-8z"/></svg>
+        </button>
+        <button class="cam-icon" id="btn-flip" aria-label="Cambiar entre cámara trasera y frontal">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M21 12a9 9 0 0 1-15 6.7L3 16"/><path d="M3 12A9 9 0 0 1 18 5.3L21 8"/><path d="M3 21v-5h5"/><path d="M21 3v5h-5"/></svg>
+        </button>
+        <button class="cam-close" id="cam-close" aria-label="Salir">&times;</button>
+      </div>
+    </div>
+    <div class="viewfinder" id="viewfinder">
+      <video id="vf" playsinline autoplay muted></video>
+      <div class="vf-frame"></div>
+      <div class="focus-ring" id="focus-ring"></div>
+      <div class="flash" id="flash"></div>
+      <div class="peek" id="peek"><img id="peek-img" alt="" /></div>
+    </div>
+    <div class="cam-controls">
+      <div class="cam-side">
+        <button class="cam-btn" id="btn-video">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><rect x="3" y="6" width="13" height="12" rx="2"/><path d="M16 10l5-3v10l-5-3z"/></svg>
+          <span id="video-count">0/2</span>
+        </button>
+        <span class="cam-hint">video</span>
+      </div>
+      <button class="shutter" id="shutter" aria-label="Disparar"></button>
+      <div class="cam-side">
+        <button class="cam-btn" id="btn-finish">Listo</button>
+        <span class="cam-hint" id="cam-status"></span>
+      </div>
+    </div>
+    <div class="screen-flash" id="screen-flash"></div>
+  </div>
+
   <input id="input-video" type="file" accept="video/*" capture="environment" class="hidden" />
   <canvas id="capture-canvas" class="hidden"></canvas>
-
-  <!-- Destello + vistazo tipo Polaroid -->
-  <div class="flash-overlay" id="flash"></div>
-  <div class="peek-overlay" id="peek"><img id="peek-img" alt="" /></div>
 
   <div class="toast" id="toast"></div>
 
