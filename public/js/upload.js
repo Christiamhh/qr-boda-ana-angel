@@ -4,7 +4,7 @@ import { upload } from 'https://esm.sh/@vercel/blob@0.27.3/client';
   "use strict";
 
   var MOMENTO = window.__MOMENTO__;
-  var LIMITS = { maxPhotos: 15, maxVideos: 2, maxVideoSeconds: 31 };
+  var LIMITS = { maxPhotos: 15, maxVideos: 2, maxVideoSeconds: 30 };
   var PHOTO_MAX_EDGE = 3000;
   var PHOTO_QUALITY = 0.9;
 
@@ -13,8 +13,11 @@ import { upload } from 'https://esm.sh/@vercel/blob@0.27.3/client';
   var videosUsed = 0;
   var pending = 0;
   var currentFacing = "environment";
-  var stream = null, videoTrack = null, imageCapture = null;
+  var stream = null, videoTrack = null, imageCapture = null, backCamId = null;
   var torchAvailable = false, flashOn = true, busy = false, switching = false;
+  // Grabación de video dentro de la app (se corta sola al llegar al límite)
+  var recording = false, mediaRecorder = null, recChunks = [];
+  var recTimer = null, recTick = null, recStart = 0, audioStream = null;
 
   var $ = function (id) { return document.getElementById(id); };
   var el = {
@@ -27,6 +30,7 @@ import { upload } from 'https://esm.sh/@vercel/blob@0.27.3/client';
     btnTorch: $("btn-torch"), btnFlip: $("btn-flip"), shutter: $("shutter"),
     btnVideo: $("btn-video"), videoCount: $("video-count"), btnFinish: $("btn-finish"),
     btnResume: $("btn-resume"), inputVideo: $("input-video"), canvas: $("capture-canvas"), toast: $("toast"),
+    recBadge: $("rec-badge"),
   };
 
   function wait(ms) { return new Promise(function (r) { setTimeout(r, ms); }); }
@@ -52,7 +56,7 @@ import { upload } from 'https://esm.sh/@vercel/blob@0.27.3/client';
   var DEVICE = deviceId();
 
   // ── Contadores ──
-  function updatePhotoCounter(){ el.camNum.textContent=Math.max(0,photosLeft); el.shutter.disabled=photosLeft<=0||busy; }
+  function updatePhotoCounter(){ el.camNum.textContent=Math.max(0,photosLeft); el.shutter.disabled=photosLeft<=0||busy||recording; }
   function updateVideoCounter(){ el.videoCount.textContent=videosUsed+"/"+LIMITS.maxVideos; el.btnVideo.disabled=videosUsed>=LIMITS.maxVideos; }
   function setStatusHint(){ el.camStatus = el.camStatus || $("cam-status"); if(el.camStatus) el.camStatus.textContent = pending>0?"subiendo…":""; }
 
@@ -80,14 +84,16 @@ import { upload } from 'https://esm.sh/@vercel/blob@0.27.3/client';
   function captureFrame(){
     var v=el.vf, cw=v.videoWidth, ch=v.videoHeight; if(!cw||!ch) return null;
     var s=Math.min(1,PHOTO_MAX_EDGE/Math.max(cw,ch)); var w=Math.round(cw*s),h=Math.round(ch*s);
-    el.canvas.width=w; el.canvas.height=h; el.canvas.getContext("2d").drawImage(v,0,0,w,h); return el.canvas;
+    el.canvas.width=w; el.canvas.height=h;
+    var ctx=el.canvas.getContext("2d");
+    // En selfie espejamos para que la foto coincida con el visor
+    if(currentFacing==="user"){ ctx.setTransform(-1,0,0,1,w,0); } else { ctx.setTransform(1,0,0,1,0,0); }
+    ctx.drawImage(v,0,0,w,h); ctx.setTransform(1,0,0,1,0,0);
+    return el.canvas;
   }
+  // Capturamos SIEMPRE el fotograma del visor: la foto = lo que ves (WYSIWYG),
+  // misma lente que el preview, y SIN el flash automático de takePhoto.
   async function captureStill(){
-    if(imageCapture && imageCapture.takePhoto){
-      var settings=(flashOn && currentFacing==="environment")?{fillLightMode:"flash"}:undefined;
-      try{ var raw=settings?await imageCapture.takePhoto(settings):await imageCapture.takePhoto(); if(raw&&raw.size) return await compressBlob(raw); }
-      catch(e){ try{ var r2=await imageCapture.takePhoto(); if(r2&&r2.size) return await compressBlob(r2); }catch(_){} }
-    }
     var canvas=captureFrame(); if(!canvas) return null;
     return await new Promise(function(res){ canvas.toBlob(function(b){res(b);},"image/jpeg",PHOTO_QUALITY); });
   }
@@ -115,7 +121,7 @@ import { upload } from 'https://esm.sh/@vercel/blob@0.27.3/client';
 
   // ── Disparar (sin repetir) con flash real ──
   async function shoot(){
-    if(busy||photosLeft<=0) return;
+    if(busy||photosLeft<=0||recording) return;
     busy=true; el.shutter.disabled=true;
     var usedTorch=false, usedScreen=false;
     if(flashOn){
@@ -137,7 +143,69 @@ import { upload } from 'https://esm.sh/@vercel/blob@0.27.3/client';
   }
   el.shutter.addEventListener("click", shoot);
 
-  // ── Video (nativo) ──
+  // ── Video: grabación DENTRO de la app (se corta sola al llegar al límite) ──
+  function recSeconds(){ return Math.max(5, (LIMITS && LIMITS.maxVideoSeconds) || 30); }
+  function pickVideoMime(){
+    var c=["video/mp4","video/mp4;codecs=h264,aac","video/webm;codecs=vp8,opus","video/webm;codecs=vp9,opus","video/webm"];
+    if(window.MediaRecorder && MediaRecorder.isTypeSupported){
+      for(var i=0;i<c.length;i++){ if(MediaRecorder.isTypeSupported(c[i])) return c[i]; }
+    }
+    return "";
+  }
+  function stopAudio(){ if(audioStream){ audioStream.getTracks().forEach(function(t){t.stop();}); audioStream=null; } }
+  function showRecUI(secs){
+    el.btnVideo.classList.add("rec");
+    if(el.recBadge){ el.recBadge.textContent="● "+secs+"s"; el.recBadge.classList.add("show"); }
+    el.videoCount.textContent=secs+"s";
+    el.btnFlip.disabled=true; el.btnTorch.disabled=true;
+    updatePhotoCounter();
+  }
+  function tickRecUI(secs){ if(el.recBadge) el.recBadge.textContent="● "+secs+"s"; el.videoCount.textContent=secs+"s"; }
+  function clearRecUI(){
+    el.btnVideo.classList.remove("rec");
+    if(el.recBadge) el.recBadge.classList.remove("show");
+    el.btnFlip.disabled=false; el.btnTorch.disabled=false;
+    updateVideoCounter(); updatePhotoCounter();
+  }
+  async function startVideoRecording(){
+    if(recording||busy||videosUsed>=LIMITS.maxVideos) return;
+    var vt=(stream&&stream.getVideoTracks)?stream.getVideoTracks()[0]:null;
+    if(!vt){ toast("La cámara no está lista"); return; }
+    var tracks=[vt];
+    try{ audioStream=await navigator.mediaDevices.getUserMedia({audio:true}); var at=audioStream.getAudioTracks()[0]; if(at) tracks.push(at); }
+    catch(e){ toast("Sin micrófono: el video irá sin sonido"); }
+    var mime=pickVideoMime();
+    try{ mediaRecorder = mime ? new MediaRecorder(new MediaStream(tracks),{mimeType:mime}) : new MediaRecorder(new MediaStream(tracks)); }
+    catch(e){ stopAudio(); toast("No se pudo iniciar la grabación"); return; }
+    recChunks=[];
+    mediaRecorder.ondataavailable=function(ev){ if(ev.data&&ev.data.size) recChunks.push(ev.data); };
+    mediaRecorder.onstop=finishVideoRecording;
+    recording=true; recStart=Date.now();
+    try{ mediaRecorder.start(); }catch(e){ recording=false; stopAudio(); toast("No se pudo iniciar la grabación"); return; }
+    var max=recSeconds(); showRecUI(max);
+    recTick=setInterval(function(){ var left=Math.ceil(max-(Date.now()-recStart)/1000); tickRecUI(Math.max(0,left)); },250);
+    recTimer=setTimeout(stopVideoRecording, max*1000);
+    toast("Grabando… (máx "+max+"s) · tocá de nuevo para terminar");
+  }
+  function stopVideoRecording(){
+    if(!recording) return; recording=false;
+    clearTimeout(recTimer); clearInterval(recTick); recTimer=null; recTick=null;
+    try{ if(mediaRecorder && mediaRecorder.state!=="inactive") mediaRecorder.stop(); }catch(e){}
+    clearRecUI();
+  }
+  function finishVideoRecording(){
+    stopAudio();
+    var type=(mediaRecorder&&mediaRecorder.mimeType)||"video/webm";
+    var blob=new Blob(recChunks,{type:type}); recChunks=[];
+    if(!blob.size){ toast("No se grabó el video"); return; }
+    if(videosUsed>=LIMITS.maxVideos){ toast("Ya usaste tus "+LIMITS.maxVideos+" videos"); return; }
+    videosUsed++; updateVideoCounter();
+    var ext=(type.indexOf("mp4")>-1)?"mp4":"webm";
+    toast("Subiendo tu video…");
+    uploadShot(blob,"video","video-"+videosUsed+"."+ext);
+  }
+
+  // ── Respaldo: cámara nativa (solo si el navegador no soporta MediaRecorder) ──
   function videoDuration(file){
     return new Promise(function(resolve){
       var url=URL.createObjectURL(file); var v=document.createElement("video"); v.preload="metadata";
@@ -145,15 +213,21 @@ import { upload } from 'https://esm.sh/@vercel/blob@0.27.3/client';
       v.onerror=function(){ URL.revokeObjectURL(url); resolve(-1); }; v.src=url;
     });
   }
-  el.btnVideo.addEventListener("click", function(){ if(videosUsed>=LIMITS.maxVideos) return; el.inputVideo.setAttribute("capture",currentFacing); el.inputVideo.click(); });
+  function startNativeVideo(){ if(videosUsed>=LIMITS.maxVideos) return; el.inputVideo.setAttribute("capture",currentFacing); el.inputVideo.click(); }
   el.inputVideo.addEventListener("change", function(e){
     var file=(e.target.files||[])[0]; e.target.value=""; if(!file) return;
     videoDuration(file).then(function(dur){
-      if(dur>LIMITS.maxVideoSeconds){ toast("Ese video dura "+Math.round(dur)+"s. El máximo es 30 segundos."); return; }
+      if(dur>LIMITS.maxVideoSeconds){ toast("Ese video dura "+Math.round(dur)+"s. El máximo es "+LIMITS.maxVideoSeconds+" segundos."); return; }
       if(videosUsed>=LIMITS.maxVideos) return;
       videosUsed++; updateVideoCounter(); toast("Subiendo tu video…");
       uploadShot(file,"video","video-"+videosUsed+".mp4");
     });
+  });
+
+  el.btnVideo.addEventListener("click", function(){
+    if(recording){ stopVideoRecording(); return; }
+    if(videosUsed>=LIMITS.maxVideos){ toast("Ya usaste tus "+LIMITS.maxVideos+" videos"); return; }
+    if(window.MediaRecorder){ startVideoRecording(); } else { startNativeVideo(); }
   });
 
   // ── Cámara: pista, flash, flip, foco ──
@@ -166,8 +240,25 @@ import { upload } from 'https://esm.sh/@vercel/blob@0.27.3/client';
     el.btnTorch.classList.toggle("active",flashOn);
     el.vf.classList.toggle("mirror",currentFacing==="user");
   }
-  function getStream(facing){
-    return navigator.mediaDevices.getUserMedia({ video:{ facingMode: facing==="user"?"user":{ideal:"environment"}, width:{ideal:2560}, height:{ideal:1440} }, audio:false });
+  // Elegimos la cámara trasera NORMAL (no gran angular / tele / macro / profundidad)
+  function isOddLens(label){ return /(ultra|wide|angular|tele|zoom|macro|depth|monochrome|bokeh|profundidad)/i.test(label||""); }
+  async function pickBackCamera(){
+    try{
+      var devs=await navigator.mediaDevices.enumerateDevices();
+      var cams=devs.filter(function(d){ return d.kind==="videoinput"; });
+      var back=cams.filter(function(d){ return /(back|rear|tras|environment)/i.test(d.label); });
+      if(!back.length) back=cams;
+      var normal=back.filter(function(d){ return !isOddLens(d.label); });
+      var chosen=normal[0]||back[0];
+      backCamId=chosen?chosen.deviceId:null;
+    }catch(e){ backCamId=null; }
+  }
+  function getStreamById(id){
+    return navigator.mediaDevices.getUserMedia({ video:{ deviceId:{exact:id}, width:{ideal:1920}, height:{ideal:1080} }, audio:false });
+  }
+  function getStreamFacing(facing){
+    if(facing==="environment" && backCamId) return getStreamById(backCamId);
+    return navigator.mediaDevices.getUserMedia({ video:{ facingMode: facing==="user"?"user":{ideal:"environment"}, width:{ideal:1920}, height:{ideal:1080} }, audio:false });
   }
   function stopStream(){ if(stream){ stream.getTracks().forEach(function(t){t.stop();}); stream=null; } }
   function toggleFlash(){ flashOn=!flashOn; el.btnTorch.classList.toggle("active",flashOn); toast(flashOn?"Flash activado":"Flash apagado"); }
@@ -175,8 +266,8 @@ import { upload } from 'https://esm.sh/@vercel/blob@0.27.3/client';
   async function flipCamera(){
     if(switching||el.camera.classList.contains("fallback")) return; switching=true; el.btnFlip.disabled=true;
     var prev=currentFacing; currentFacing=currentFacing==="user"?"environment":"user"; stopStream();
-    try{ stream=await getStream(currentFacing); el.vf.srcObject=stream; await el.vf.play().catch(function(){}); setupTrack(); }
-    catch(e){ currentFacing=prev; try{ stream=await getStream(currentFacing); el.vf.srcObject=stream; await el.vf.play().catch(function(){}); setupTrack(); }catch(_){} toast("No se pudo cambiar de cámara"); }
+    try{ stream=await getStreamFacing(currentFacing); el.vf.srcObject=stream; await el.vf.play().catch(function(){}); setupTrack(); }
+    catch(e){ currentFacing=prev; try{ stream=await getStreamFacing(currentFacing); el.vf.srcObject=stream; await el.vf.play().catch(function(){}); setupTrack(); }catch(_){} toast("No se pudo cambiar de cámara"); }
     switching=false; el.btnFlip.disabled=false;
   }
   el.btnFlip.addEventListener("click", flipCamera);
@@ -193,7 +284,16 @@ import { upload } from 'https://esm.sh/@vercel/blob@0.27.3/client';
     el.camera.classList.add("open"); currentFacing="environment"; updatePhotoCounter(); updateVideoCounter();
     if(!navigator.mediaDevices||!navigator.mediaDevices.getUserMedia){ el.camera.classList.remove("open"); show(el.denied); return; }
     try{
-      stream=await getStream(currentFacing); el.vf.srcObject=stream; await el.vf.play().catch(function(){}); setupTrack();
+      stream=await getStreamFacing("environment");          // 1) permiso + stream inicial
+      if(!backCamId){ await pickBackCamera(); }             // 2) con permiso ya conocemos las lentes
+      if(backCamId){                                        // 3) reabrir con la cámara normal si hace falta
+        var t0=stream.getVideoTracks()[0];
+        var cur=(t0&&t0.getSettings)?t0.getSettings():{};
+        if(cur.deviceId && cur.deviceId!==backCamId){
+          try{ var s2=await getStreamById(backCamId); stream.getTracks().forEach(function(t){t.stop();}); stream=s2; }catch(e){}
+        }
+      }
+      el.vf.srcObject=stream; await el.vf.play().catch(function(){}); setupTrack();
     }catch(err){ el.camera.classList.remove("open"); show(el.denied); }
   }
 
@@ -211,7 +311,8 @@ import { upload } from 'https://esm.sh/@vercel/blob@0.27.3/client';
     reqJSON("/api/roll/finish",{momento:MOMENTO,deviceId:DEVICE}).catch(function(){});
   }
   function exitCamera(){
-    el.camera.classList.remove("open"); stopStream();
+    if(recording) stopVideoRecording();
+    el.camera.classList.remove("open"); stopStream(); stopAudio();
     var pl=photosLeft, vl=LIMITS.maxVideos-videosUsed;
     if(pl<=0&&vl<=0) showDone(); else showResume();
   }

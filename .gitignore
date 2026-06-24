@@ -8,3 +8,10 @@ node_modules/
 
 .vercel
 .env*.local
+
+# Artefactos temporales (capturas/túnel/servidor local)
+.shot-*.png
+.cf.out
+.cf.log
+.server.err
+.server.log

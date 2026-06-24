@@ -3,14 +3,15 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-  <title>Ana &amp; Ángel · {{MOMENTO_LABEL}}</title>
-  <meta name="theme-color" content="#faf7f2" />
+  <title>Ángel &amp; Ana · {{MOMENTO_LABEL}}</title>
+  <meta name="theme-color" content="#e9b988" />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,500;1,400&family=Jost:wght@300;400&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="/static/css/styles.css" />
 </head>
-<body>
+<body class="guest">
+  <div class="bg-beach" aria-hidden="true"></div>
   <div class="page">
     <div class="card">
 
@@ -21,18 +22,18 @@
           {{MOMENTO_LABEL}}
         </div>
         <div class="monogram">A&nbsp;·&nbsp;A</div>
-        <div class="names">Ana Donaire</div>
-        <div class="amp">&amp;</div>
         <div class="names">Ángel Aguilar</div>
+        <div class="amp">&amp;</div>
+        <div class="names">Ana Donaire</div>
         <p class="subtitle">Tu cámara desechable de este día</p>
 
-        <div class="divider"><span>&#10086;</span></div>
+        <div class="couple-frame"><img src="/static/NOVIOS.png" alt="Ángel y Ana" /></div>
 
         <div class="roll-note">
           <span class="ico">
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M3 9a2 2 0 0 1 2-2h1.5l1-2h5l1 2H19a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><circle cx="12" cy="13" r="3.2"/></svg>
           </span>
-          <p>Tenés <b>15 fotos y 2 videos</b>, como un rollo. Cada disparo <b>se gasta y no se repite</b> — hacé que cada foto cuente. 📷</p>
+          <p>Tenés <b>15 fotos y 2 videos</b>, como un rollo. Cada disparo <b>se gasta y no se repite</b> — hacé que cada foto cuente.</p>
         </div>
 
         <div class="note" style="margin-top:12px">
@@ -47,14 +48,14 @@
           <input id="nombre" type="text" maxlength="80" placeholder="Tu nombre" autocomplete="name" />
         </div>
         <div class="field">
-          <label for="mensaje">Un mensaje para Ana &amp; Ángel (opcional)</label>
+          <label for="mensaje">Un mensaje para Ángel &amp; Ana (opcional)</label>
           <textarea id="mensaje" maxlength="500" placeholder="Escribe unas líneas con cariño…"></textarea>
         </div>
 
         <button class="btn btn-primary" id="btn-start" disabled>Abrir mi cámara</button>
         <div class="lock-note">
           <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="5" y="11" width="14" height="9" rx="2"/><path d="M8 11V8a4 4 0 0 1 8 0v3"/></svg>
-          Una sola cámara por dispositivo
+          Un solo rollo por dispositivo
         </div>
       </div>
 
@@ -84,11 +85,11 @@
           <svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M20 7L10 17l-5-5"/></svg>
         </div>
         <h2>¡Gracias de corazón!</h2>
-        <p id="done-text">Tus recuerdos ya están con Ana &amp; Ángel. 💛</p>
+        <p id="done-text">Tus recuerdos ya están con Ángel &amp; Ana. 💛</p>
       </div>
 
     </div>
-    <div class="footer-credit">Ana &amp; Ángel · 2026</div>
+    <div class="footer-credit">Ángel &amp; Ana · 2026</div>
   </div>
 
   <!-- ── Cámara en vivo (dentro de la app, SIN repetir) ── -->
@@ -113,6 +114,7 @@
       <div class="vf-frame"></div>
       <div class="focus-ring" id="focus-ring"></div>
       <div class="flash" id="flash"></div>
+      <div class="rec-badge" id="rec-badge">● REC</div>
       <div class="peek" id="peek"><img id="peek-img" alt="" /></div>
     </div>
     <div class="cam-controls">

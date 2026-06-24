@@ -518,6 +518,27 @@ textarea { resize: vertical; min-height: 64px; }
 }
 .screen-flash.on { opacity: 1; }
 
+/* ── Indicador de grabación de video ── */
+.rec-badge {
+  position: absolute;
+  top: 16px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: rgba(200, 30, 30, 0.92);
+  color: #fff;
+  font-family: var(--sans);
+  font-weight: 400;
+  font-size: 13px;
+  letter-spacing: 0.06em;
+  padding: 5px 13px;
+  border-radius: 999px;
+  display: none;
+  z-index: 6;
+}
+.rec-badge.show { display: inline-block; animation: recpulse 1s ease-in-out infinite; }
+@keyframes recpulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.55; } }
+.cam-btn.rec { background: #c81e1e; border-color: #c81e1e; color: #fff; }
+
 /* ── Rollo (captura con cámara nativa) ── */
 .roll-counter { text-align: center; margin: 16px 0 4px; }
 .roll-counter .big { display: block; font-family: var(--serif); font-weight: 500; font-size: 62px; line-height: 1; color: var(--rose-deep); }
@@ -552,3 +573,173 @@ textarea { resize: vertical; min-height: 64px; }
   25% { opacity: 1; }
   100% { opacity: 0; transform: scale(1); }
 }
+
+/* ═══════════════════════════════════════════════════════════
+   EXPERIENCIA MOBILE DE INVITADOS  (body.guest)
+   Fondo de playa al atardecer + foto de los novios pegada abajo.
+   Paleta cálida tomada de la imagen: arena, dorado, terracota, roca.
+   Sólo aplica a inicio.html y subir.html — el panel de los novios
+   (galería / qr / login) queda intacto.
+   ═══════════════════════════════════════════════════════════ */
+body.guest {
+  /* Paleta atardecer-playa, re-mapea las variables de los componentes */
+  --ink: #3a2a1d;                       /* roca / marrón cálido */
+  --muted: #5e4226;                     /* marrón legible sobre el vidrio translúcido */
+  --rose: #d08a52;                      /* ámbar */
+  --rose-deep: #b86f3f;                 /* terracota (botón principal) */
+  --rose-soft: #f6e1cd;                 /* durazno suave (paneles) */
+  --gold: #d59a4c;                      /* dorado del sol */
+  --cream: #fbeede;                     /* crema cálida (campos) */
+  --line: rgba(96, 62, 36, 0.16);
+  --line-soft: rgba(96, 62, 36, 0.09);
+  --ok: #6f8a5c;
+  --shadow: 0 22px 60px -28px rgba(60, 35, 18, 0.55);
+
+  position: relative;
+  background: #2c2018;                   /* respaldo mientras carga la foto */
+  /* Más aire abajo para que se asomen los novios bajo el contenido corto */
+  padding-bottom: 30px;
+}
+
+/* ── Fondo de playa: capa fija que cubre toda la pantalla ── */
+body.guest .bg-beach {
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  background: url("/static/FONDO.jpg") center / cover no-repeat;
+  pointer-events: none;
+}
+/* Velo cálido encima del fondo, para integrar y dar legibilidad */
+body.guest .bg-beach::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background:
+    linear-gradient(180deg,
+      rgba(252, 233, 212, 0.28) 0%,
+      rgba(248, 214, 180, 0.08) 34%,
+      rgba(58, 38, 22, 0.18) 74%,
+      rgba(40, 26, 16, 0.44) 100%);
+}
+
+/* ── Foto de los novios: NÍTIDA, sin sombra ──
+   El marco recorta la transparencia de arriba (cabeza → cintura). En subir
+   su borde inferior TOCA el bloque café, así no se ve cortada. */
+body.guest .couple-frame {
+  --cw: 178px;
+  width: var(--cw);
+  height: calc(var(--cw) * 688 / 746);     /* cabeza → cintura */
+  overflow: hidden;
+  margin: 8px auto 14px;
+  /* Fundido en la base: se integra con el café, sin borde duro */
+  -webkit-mask-image: linear-gradient(to bottom, #000 80%, transparent 100%);
+  mask-image: linear-gradient(to bottom, #000 80%, transparent 100%);
+}
+body.guest .couple-frame img {
+  display: block;
+  width: calc(var(--cw) * 1066 / 746);     /* escala para llenar el ancho */
+  height: auto;
+  transform: translate(calc(var(--cw) * -208 / 746), calc(var(--cw) * -432 / 746));
+}
+/* En subir: la foto pega con el café (sin verse cortada) */
+body.guest #start-view .couple-frame { margin: 6px auto 0; }
+body.guest #start-view .roll-note { margin-top: 0; }
+body.guest .couple-frame + .roll-note { border-top-left-radius: 0; border-top-right-radius: 0; }
+
+/* El contenido va por encima del fondo de playa, centrado verticalmente
+   (margin auto = centrado a prueba de overflow: no recorta arriba) */
+body.guest .page { position: relative; z-index: 2; margin-top: auto; margin-bottom: auto; }
+
+/* ── Tarjeta como vidrio cálido translúcido ──
+   Poco desenfoque para que los novios se vean nítidos detrás. */
+body.guest .card {
+  background: rgba(253, 243, 232, 0.36);
+  border: 1px solid rgba(255, 244, 230, 0.6);
+  -webkit-backdrop-filter: blur(14px) saturate(1.1);
+  backdrop-filter: blur(14px) saturate(1.1);
+  box-shadow: 0 24px 64px -30px rgba(55, 30, 14, 0.55);
+}
+@supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+  body.guest .card { background: rgba(253, 243, 232, 0.55); }
+}
+
+/* Halo claro (glow) para que el texto se lea sobre el vidrio translúcido */
+body.guest .eyebrow,
+body.guest .names,
+body.guest .amp,
+body.guest .subtitle,
+body.guest .field label,
+body.guest .state h2,
+body.guest .state p {
+  text-shadow: 0 0 6px rgba(255, 251, 246, 0.95), 0 1px 2px rgba(255, 251, 246, 0.9);
+}
+/* Etiquetas de campos un poco más marcadas */
+body.guest .field label { color: #553a20; font-weight: 400; }
+/* "Un solo rollo por dispositivo": oscuro y SIN glow */
+body.guest .lock-note { color: #4a3320; text-shadow: none; }
+
+/* Encabezado más cálido y legible sobre el vidrio */
+body.guest .eyebrow {
+  background: rgba(214, 138, 82, 0.16);
+  color: #9a5a30;
+}
+body.guest .monogram { display: none; }   /* redundante con la foto real */
+body.guest .names { color: #3a281b; }
+/* "&" claro: el ampersand itálico de Cormorant no se entendía */
+body.guest .amp { color: var(--rose); font-family: var(--sans); font-style: normal; font-weight: 400; }
+
+/* Botón principal con degradado de atardecer */
+body.guest .btn-primary {
+  background: linear-gradient(135deg, #d99554 0%, #b86f3f 55%, #a85f37 100%);
+  box-shadow: 0 14px 26px -14px rgba(150, 80, 35, 0.7);
+}
+body.guest .btn-primary:hover:not([disabled]) {
+  background: linear-gradient(135deg, #e0a063 0%, #b86f3f 60%, #9c5630 100%);
+}
+body.guest .btn-ghost {
+  background: rgba(255, 248, 240, 0.5);
+  border-color: rgba(120, 78, 45, 0.28);
+  color: #4a3320;
+}
+
+/* Campos sobre el vidrio */
+body.guest input[type="text"],
+body.guest textarea {
+  background: rgba(255, 250, 244, 0.85);
+  border-color: rgba(120, 78, 45, 0.22);
+}
+body.guest input[type="text"]:focus,
+body.guest textarea:focus {
+  background: #fffaf4;
+  border-color: var(--rose);
+}
+
+/* Nota "rollo" (oscura) afinada al tono roca */
+body.guest .roll-note { background: rgba(42, 28, 18, 0.92); color: #f6e4d2; }
+body.guest .roll-note b { color: #fff; }
+
+/* Estados (gracias / reanudar / cámara) */
+body.guest .state .big-ico { background: rgba(214, 138, 82, 0.18); color: var(--rose-deep); }
+
+/* Crédito al pie — legible sobre el fondo */
+body.guest .footer-credit { color: #f3e3d2; opacity: 0.85; }
+
+/* ── Compactar para que el rollo entre en UNA SOLA pantalla (sin scroll) ── */
+body.guest { padding: 12px 14px 14px; }
+body.guest .card { padding: 16px 20px 14px; border-radius: 20px; }
+body.guest .monogram { width: 44px; height: 44px; margin: 6px auto 2px; font-size: 16px; }
+body.guest .names { font-size: 27px; line-height: 1.04; }
+body.guest .amp { font-size: 16px; margin: 0; }
+body.guest .subtitle { margin-top: 4px; font-size: 12.5px; }
+body.guest #start-view .roll-note { padding: 9px 13px; }
+body.guest #start-view .roll-note p { font-size: 11.5px; line-height: 1.38; }
+body.guest #start-view .note { margin-top: 7px; padding: 8px 12px; }
+body.guest #start-view .note p { font-size: 11.5px; line-height: 1.38; }
+body.guest #start-view .field { margin-top: 7px; }
+body.guest #start-view .field label { font-size: 11px; margin-bottom: 3px; }
+body.guest #start-view input[type="text"],
+body.guest #start-view textarea { padding: 9px 12px; font-size: 14px; }
+body.guest #start-view textarea { min-height: 40px; }
+body.guest #start-view .btn-primary { margin-top: 9px; padding: 12px; }
+body.guest #start-view .lock-note { margin-top: 7px; }
+body.guest .footer-credit { margin-top: 6px; }
